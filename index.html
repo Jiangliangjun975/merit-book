@@ -501,6 +501,36 @@
       margin-bottom: var(--space-3);
     }
 
+    /* Swipeable Record Item */
+    .record-wrapper {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-2);
+    }
+
+    .record-delete-bg {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 80px;
+      background: var(--danger);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .record-delete-bg:active {
+      background: #dc2626;
+    }
+
     .record-item {
       display: flex;
       align-items: center;
@@ -508,8 +538,16 @@
       padding: var(--space-3) var(--space-4);
       background: var(--bg-card);
       border-radius: var(--radius-sm);
-      margin-bottom: var(--space-2);
       box-shadow: var(--shadow);
+      position: relative;
+      z-index: 2;
+      transition: transform 0.2s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .record-item.swiping {
+      transition: none;
     }
 
     .record-item .person-avatar {
@@ -560,10 +598,6 @@
       text-overflow: ellipsis;
     }
 
-    .record-item {
-      cursor: pointer;
-    }
-
     .record-item .record-score {
       font-size: 16px;
       font-weight: 700;
@@ -581,6 +615,14 @@
     .record-item .record-score.clear {
       color: var(--warning);
       font-size: 13px;
+    }
+
+    .swipe-hint {
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-secondary);
+      padding: var(--space-2) 0;
+      opacity: 0.7;
     }
 
     .empty-state {
@@ -1281,7 +1323,7 @@
       }
 
       const shown = records.slice(0, 50);
-      list.innerHTML = shown.map(r => {
+      list.innerHTML = (shown.length > 0 ? '<div class="swipe-hint">← 左滑记录可删除</div>' : '') + shown.map(r => {
         const personCls = r.person === 'leida' ? 'leida' : 'liangjun';
         const personName = r.person === 'leida' ? '雷' : '良';
         const scoreClass = r.type === 'danger' ? 'clear' : (r.score > 0 ? 'positive' : 'negative');
@@ -1289,17 +1331,170 @@
         const time = formatTime(r.created_at);
         const noteHtml = r.note ? `<div class="record-note">📝 ${r.note}</div>` : '';
         return `
-          <div class="record-item" onclick="openEditNoteModal(${r.id})">
-            <div class="person-avatar ${personCls}">${personName}</div>
-            <div class="record-content">
-              <div class="record-label">${r.label}</div>
-              ${noteHtml}
-              <div class="record-time">${time}</div>
+          <div class="record-wrapper" data-record-id="${r.id}">
+            <div class="record-delete-bg" onclick="confirmDeleteRecord(${r.id})">🗑️ 删除</div>
+            <div class="record-item" data-record-id="${r.id}">
+              <div class="person-avatar ${personCls}">${personName}</div>
+              <div class="record-content">
+                <div class="record-label">${r.label}</div>
+                ${noteHtml}
+                <div class="record-time">${time}</div>
+              </div>
+              <div class="record-score ${scoreClass}">${scoreText}</div>
             </div>
-            <div class="record-score ${scoreClass}">${scoreText}</div>
           </div>
         `;
       }).join('');
+
+      // Attach swipe handlers
+      initSwipeHandlers();
+    }
+
+    // ==================== Swipe to Delete ====================
+    let activeSwipeItem = null;
+
+    function initSwipeHandlers() {
+      const items = document.querySelectorAll('.record-item[data-record-id]');
+      items.forEach(item => {
+        let startX = 0, startY = 0, currentX = 0, isSwiping = false, isScrolling = false;
+        const THRESHOLD = 60;
+
+        const onStart = (e) => {
+          // Close any other open swipe
+          if (activeSwipeItem && activeSwipeItem !== item) {
+            activeSwipeItem.style.transform = 'translateX(0)';
+            activeSwipeItem.classList.remove('swiping');
+            activeSwipeItem = null;
+          }
+          const touch = e.touches ? e.touches[0] : e;
+          startX = touch.clientX;
+          startY = touch.clientY;
+          currentX = 0;
+          isSwiping = false;
+          isScrolling = false;
+          item.classList.add('swiping');
+        };
+
+        const onMove = (e) => {
+          if (isScrolling) return;
+          const touch = e.touches ? e.touches[0] : e;
+          const dx = touch.clientX - startX;
+          const dy = touch.clientY - startY;
+
+          // Determine if scrolling vertically
+          if (!isSwiping && Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 5) {
+            isScrolling = true;
+            item.classList.remove('swiping');
+            return;
+          }
+
+          if (Math.abs(dx) > 5) {
+            isSwiping = true;
+            e.preventDefault();
+          }
+
+          if (isSwiping) {
+            currentX = Math.min(0, Math.max(-80, dx));
+            item.style.transform = `translateX(${currentX}px)`;
+          }
+        };
+
+        const onEnd = () => {
+          item.classList.remove('swiping');
+          if (isSwiping) {
+            if (currentX < -THRESHOLD / 2) {
+              item.style.transform = 'translateX(-80px)';
+              activeSwipeItem = item;
+            } else {
+              item.style.transform = 'translateX(0)';
+              if (activeSwipeItem === item) activeSwipeItem = null;
+            }
+          } else if (!isScrolling) {
+            // It was a tap - open edit note
+            const recordId = parseInt(item.dataset.recordId);
+            if (recordId) openEditNoteModal(recordId);
+          }
+        };
+
+        // Touch events
+        item.addEventListener('touchstart', onStart, { passive: true });
+        item.addEventListener('touchmove', onMove, { passive: false });
+        item.addEventListener('touchend', onEnd);
+
+        // Mouse events (for desktop)
+        item.addEventListener('mousedown', (e) => {
+          onStart(e);
+          const mouseMoveHandler = (ev) => onMove(ev);
+          const mouseUpHandler = () => {
+            onEnd();
+            document.removeEventListener('mousemove', mouseMoveHandler);
+            document.removeEventListener('mouseup', mouseUpHandler);
+          };
+          document.addEventListener('mousemove', mouseMoveHandler);
+          document.addEventListener('mouseup', mouseUpHandler);
+        });
+      });
+
+    }
+
+    // Close swipe on tap outside (register once)
+    document.addEventListener('touchstart', (e) => {
+      if (activeSwipeItem && !e.target.closest('.record-wrapper')) {
+        activeSwipeItem.style.transform = 'translateX(0)';
+        activeSwipeItem = null;
+      }
+    }, { passive: true });
+    document.addEventListener('mousedown', (e) => {
+      if (activeSwipeItem && !e.target.closest('.record-wrapper')) {
+        activeSwipeItem.style.transform = 'translateX(0)';
+        activeSwipeItem = null;
+      }
+    });
+
+    // ==================== Delete Record ====================
+    let pendingDeleteRecordId = null;
+
+    function confirmDeleteRecord(recordId) {
+      pendingDeleteRecordId = recordId;
+      const record = state.records.find(r => r.id === recordId);
+      if (!record) return;
+
+      const personName = record.person === 'leida' ? '雷大' : '良君';
+      const scoreText = record.type === 'danger' ? '清零' : (record.score > 0 ? `+${record.score}` : record.score);
+
+      document.getElementById('confirmIcon').textContent = '🗑️';
+      document.getElementById('confirmText').textContent = `确定删除这条记录？`;
+      document.getElementById('confirmDetail').textContent = `${personName}：${record.label}（${scoreText}）`;
+      document.getElementById('confirmBtn').style.background = '#ef4444';
+      document.getElementById('confirmBtn').textContent = '删除';
+      document.getElementById('confirmNote').style.display = 'none';
+      document.getElementById('confirmOverlay').classList.add('active');
+
+      // Override confirm action temporarily
+      document.getElementById('confirmBtn').onclick = executeDeleteRecord;
+    }
+
+    async function executeDeleteRecord() {
+      if (!pendingDeleteRecordId) return;
+
+      const id = pendingDeleteRecordId;
+      closeConfirm();
+      // Restore original confirm behavior
+      document.getElementById('confirmBtn').onclick = executeConfirm;
+      document.getElementById('confirmBtn').textContent = '确认';
+      document.getElementById('confirmNote').style.display = '';
+      pendingDeleteRecordId = null;
+
+      const { error } = await db.from('records').delete().eq('id', id);
+
+      if (error) {
+        showToast('❌', '删除失败', error.message);
+        return;
+      }
+
+      await loadRecords();
+      render();
+      showToast('🗑️', '记录已删除', '积分已重新计算');
     }
 
     function formatTime(ts) {
