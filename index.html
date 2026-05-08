@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>功德簿</title>
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- Supabase JS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #ffffff;
+      --bg-secondary: #f8fafc;
+      --bg-card: #ffffff;
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --shadow: 0 1px 3px rgba(0,0,0,0.08);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.1);
+      --primary: #6366f1;
+      --primary-light: #eef2ff;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+    }
+
+    [data-theme="dark"] {
+      --bg-primary: #0f172a;
+      --bg-secondary: #1e293b;
+      --bg-card: #1e293b;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --border-color: #334155;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-lg: 0 4px 12px rgba(0,0,0,0.4);
+      --primary-light: #312e81;
+      --success-light: #064e3b;
+      --danger-light: #7f1d1d;
+      --warning-light: #78350f;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      padding-bottom: 80px;
+      transition: background 0.3s, color 0.3s;
+    }
+
+    /* Setup Page */
+    .setup-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: var(--space-5);
+    }
+
+    .setup-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: var(--space-8);
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .setup-card h2 {
+      text-align: center;
+      margin-bottom: var(--space-2);
+      font-size: 24px;
+    }
+
+    .setup-card .subtitle {
+      text-align: center;
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: var(--space-6);
+    }
+
+    .setup-card .form-group {
+      margin-bottom: var(--space-4);
+    }
+
+    .setup-card label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .setup-card input {
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .setup-card input:focus {
+      border-color: var(--primary);
+    }
+
+    .setup-card .hint {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: var(--space-1);
+    }
+
+    .setup-card .setup-btn {
+      width: 100%;
+      padding: var(--space-4);
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: var(--space-5);
+      transition: opacity 0.2s;
+    }
+
+    .setup-card .setup-btn:hover {
+      opacity: 0.9;
+    }
+
+    .setup-card .setup-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .setup-error {
+      background: var(--danger-light);
+      color: var(--danger);
+      padding: var(--space-3);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      margin-top: var(--space-3);
+      display: none;
+    }
+
+    .setup-steps {
+      background: var(--bg-secondary);
+      border-radius: var(--radius-sm);
+      padding: var(--space-4);
+      margin-bottom: var(--space-5);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .setup-steps ol {
+      padding-left: 20px;
+    }
+
+    .setup-steps code {
+      background: var(--bg-card);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: 1px solid var(--border-color);
+    }
+
+    /* Connection Status */
+    .conn-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: var(--bg-secondary);
+    }
+
+    .conn-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .conn-dot.online {
+      background: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: var(--space-4) var(--space-5);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header h1 {
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+    }
+
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s;
+    }
+
+    .icon-btn:hover {
+      background: var(--primary-light);
+      color: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* Score Cards */
+    .score-section {
+      padding: var(--space-5);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+    }
+
+    .score-card {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: var(--space-5);
+      text-align: center;
+      box-shadow: var(--shadow);
+      border: 2px solid transparent;
+      transition: all 0.2s;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .score-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+    }
+
+    .score-card.leida::before {
+      background: linear-gradient(90deg, #6366f1, #8b5cf6);
+    }
+
+    .score-card.liangjun::before {
+      background: linear-gradient(90deg, #f59e0b, #f97316);
+    }
+
+    .score-card.active {
+      border-color: var(--primary);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .score-card .name {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+    }
+
+    .score-card .score {
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--primary);
+    }
+
+    .score-card .label {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: var(--space-1);
+    }
+
+    /* Current Target Indicator */
+    .target-indicator {
+      padding: 0 var(--space-5);
+      margin-bottom: var(--space-3);
+    }
+
+    .target-indicator .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: var(--space-2) var(--space-4);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* Rules Section */
+    .section {
+      padding: 0 var(--space-5);
+      margin-bottom: var(--space-5);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-3);
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .add-rule-btn {
+      font-size: 12px;
+      padding: var(--space-1) var(--space-3);
+      border-radius: 16px;
+      border: 1px dashed var(--border-color);
+      background: transparent;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .add-rule-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .rules-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+    }
+
+    .rule-btn {
+      padding: var(--space-2) var(--space-4);
+      border-radius: 20px;
+      border: none;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      position: relative;
+    }
+
+    .rule-btn:active {
+      transform: scale(0.95);
+    }
+
+    .rule-btn.add {
+      background: var(--success-light);
+      color: #059669;
+    }
+
+    .rule-btn.add:hover {
+      background: #d1fae5;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+    }
+
+    .rule-btn.sub {
+      background: var(--danger-light);
+      color: #dc2626;
+    }
+
+    .rule-btn.sub:hover {
+      background: #fee2e2;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+    }
+
+    .rule-btn.danger {
+      background: var(--danger-light);
+      color: #dc2626;
+      border: 1px solid #fca5a5;
+      font-weight: 700;
+    }
+
+    .rule-btn .score-badge {
+      font-size: 12px;
+      font-weight: 700;
+      opacity: 0.8;
+    }
+
+    .rule-btn .delete-mark {
+      display: none;
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--danger);
+      color: white;
+      font-size: 11px;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .rule-btn .edit-mark {
+      display: none;
+      position: absolute;
+      top: -4px;
+      left: -4px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      font-size: 11px;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+
+    .editing-rules .rule-btn .delete-mark {
+      display: flex;
+    }
+
+    .editing-rules .rule-btn .edit-mark {
+      display: flex;
+    }
+
+    .editing-rules .rule-btn {
+      animation: shake 0.3s ease-in-out infinite alternate;
+    }
+
+    @keyframes shake {
+      from { transform: rotate(-1deg); }
+      to { transform: rotate(1deg); }
+    }
+
+    /* Records Section */
+    .records-section {
+      padding: 0 var(--space-5);
+    }
+
+    .records-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-3);
+    }
+
+    .record-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg-card);
+      border-radius: var(--radius-sm);
+      margin-bottom: var(--space-2);
+      box-shadow: var(--shadow);
+    }
+
+    .record-item .person-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .record-item .person-avatar.leida {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    }
+
+    .record-item .person-avatar.liangjun {
+      background: linear-gradient(135deg, #f59e0b, #f97316);
+    }
+
+    .record-item .record-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .record-item .record-label {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .record-item .record-time {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .record-item .record-score {
+      font-size: 16px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .record-item .record-score.positive {
+      color: var(--success);
+    }
+
+    .record-item .record-score.negative {
+      color: var(--danger);
+    }
+
+    .record-item .record-score.clear {
+      color: var(--warning);
+      font-size: 13px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--space-8);
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-5);
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: var(--space-6);
+      width: 100%;
+      max-width: 360px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal h3 {
+      font-size: 18px;
+      margin-bottom: var(--space-5);
+      text-align: center;
+    }
+
+    .modal .form-group {
+      margin-bottom: var(--space-4);
+    }
+
+    .modal label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .modal input, .modal select {
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .modal input:focus, .modal select:focus {
+      border-color: var(--primary);
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: var(--space-3);
+      margin-top: var(--space-5);
+    }
+
+    .modal-actions button {
+      flex: 1;
+      padding: var(--space-3);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .btn-cancel {
+      background: var(--bg-secondary);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color) !important;
+    }
+
+    .btn-confirm {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-confirm:hover {
+      opacity: 0.9;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: var(--space-6) var(--space-8);
+      box-shadow: var(--shadow-lg);
+      z-index: 2000;
+      text-align: center;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    .toast .toast-icon {
+      font-size: 48px;
+      margin-bottom: var(--space-3);
+    }
+
+    .toast .toast-text {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .toast .toast-detail {
+      font-size: 13px;
+      color: var(--text-secondary);
+      margin-top: var(--space-1);
+    }
+
+    /* Confirm Dialog */
+    .confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-5);
+    }
+
+    .confirm-overlay.active {
+      display: flex;
+    }
+
+    .confirm-dialog {
+      background: var(--bg-card);
+      border-radius: var(--radius);
+      padding: var(--space-6);
+      width: 100%;
+      max-width: 320px;
+      text-align: center;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .confirm-dialog .confirm-icon {
+      font-size: 36px;
+      margin-bottom: var(--space-3);
+    }
+
+    .confirm-dialog .confirm-text {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: var(--space-2);
+    }
+
+    .confirm-dialog .confirm-detail {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-5);
+    }
+
+    .confirm-dialog .confirm-actions {
+      display: flex;
+      gap: var(--space-3);
+    }
+
+    .confirm-dialog .confirm-actions button {
+      flex: 1;
+      padding: var(--space-3);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: var(--space-2);
+      padding: 0 var(--space-5);
+      margin-bottom: var(--space-4);
+    }
+
+    .tab {
+      padding: var(--space-2) var(--space-4);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background: transparent;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    /* Loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--bg-secondary);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
+
+    .loading-overlay.hidden {
+      display: none;
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--border-color);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 400px) {
+      .score-card .score {
+        font-size: 28px;
+      }
+      .rule-btn {
+        font-size: 13px;
+        padding: var(--space-2) var(--space-3);
+      }
+    }
+
+    /* Hidden */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+    <div style="color: var(--text-secondary); font-size: 14px;">正在连接云端...</div>
+  </div>
+
+  <!-- Setup Page -->
+  <div class="setup-page hidden" id="setupPage">
+    <div class="setup-card">
+      <h2>📿 功德簿配置</h2>
+      <p class="subtitle">首次使用需要配置 Supabase 连接</p>
+
+      <div class="setup-steps">
+        <strong>配置步骤：</strong>
+        <ol>
+          <li>访问 <a href="https://supabase.com" target="_blank">supabase.com</a> 注册/登录</li>
+          <li>创建新项目（免费即可）</li>
+          <li>进入 <code>Settings → API</code></li>
+          <li>复制 <code>Project URL</code> 和 <code>anon public</code> key</li>
+          <li>进入 <code>SQL Editor</code>，运行下方的建表 SQL</li>
+        </ol>
+      </div>
+
+      <div class="form-group">
+        <label>Project URL</label>
+        <input type="text" id="setupUrl" placeholder="https://xxxxx.supabase.co">
+        <div class="hint">Settings → API → Project URL</div>
+      </div>
+      <div class="form-group">
+        <label>Anon Key</label>
+        <input type="text" id="setupKey" placeholder="eyJhbGciOiJIUzI1NiIs...">
+        <div class="hint">Settings → API → anon public</div>
+      </div>
+      <button class="setup-btn" id="setupBtn" onclick="saveConfig()">连接并开始使用</button>
+      <div class="setup-error" id="setupError"></div>
+    </div>
+  </div>
+
+  <!-- Main App -->
+  <div id="mainApp" class="hidden">
+    <!-- Header -->
+    <header class="header">
+      <h1>📿 功德簿</h1>
+      <div class="header-actions">
+        <span class="conn-status" id="connStatus">
+          <span class="conn-dot" id="connDot"></span>
+          <span id="connText">连接中</span>
+        </span>
+        <button class="icon-btn" id="themeToggle" title="切换主题">🌓</button>
+        <button class="icon-btn" id="editRulesBtn" title="编辑规则">✏️</button>
+        <button class="icon-btn" id="settingsBtn" title="重置配置" onclick="resetConfig()">⚙️</button>
+      </div>
+    </header>
+
+    <!-- Score Cards -->
+    <div class="score-section">
+      <div class="score-card leida active" data-person="leida" onclick="selectPerson('leida')">
+        <div class="name">⚡ 雷大</div>
+        <div class="score" id="score-leida">0</div>
+        <div class="label">当前积分</div>
+      </div>
+      <div class="score-card liangjun" data-person="liangjun" onclick="selectPerson('liangjun')">
+        <div class="name">🌟 良君</div>
+        <div class="score" id="score-liangjun">0</div>
+        <div class="label">当前积分</div>
+      </div>
+    </div>
+
+    <!-- Target Indicator -->
+    <div class="target-indicator">
+      <span class="badge" id="targetBadge">🎯 当前记录给：<strong>雷大</strong></span>
+    </div>
+
+    <!-- Add Rules (positive) -->
+    <div class="section" id="addRulesSection">
+      <div class="section-header">
+        <span class="section-title">✨ 加分项</span>
+        <button class="add-rule-btn" onclick="openAddRuleModal('add')">+ 新增规则</button>
+      </div>
+      <div class="rules-grid" id="addRulesGrid"></div>
+    </div>
+
+    <!-- Sub Rules (negative) -->
+    <div class="section" id="subRulesSection">
+      <div class="section-header">
+        <span class="section-title">⚠️ 减分项</span>
+        <button class="add-rule-btn" onclick="openAddRuleModal('sub')">+ 新增规则</button>
+      </div>
+      <div class="rules-grid" id="subRulesGrid"></div>
+    </div>
+
+    <!-- Danger Rules -->
+    <div class="section" id="dangerRulesSection">
+      <div class="section-header">
+        <span class="section-title">🚨 严重违规</span>
+        <button class="add-rule-btn" onclick="openAddRuleModal('danger')">+ 新增规则</button>
+      </div>
+      <div class="rules-grid" id="dangerRulesGrid"></div>
+    </div>
+
+    <!-- Records -->
+    <div class="records-section">
+      <div class="records-header">
+        <span class="section-title">📋 积分记录</span>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-filter="all" onclick="filterRecords('all')">全部</button>
+        <button class="tab" data-filter="leida" onclick="filterRecords('leida')">雷大</button>
+        <button class="tab" data-filter="liangjun" onclick="filterRecords('liangjun')">良君</button>
+      </div>
+      <div id="recordsList"></div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Rule Modal -->
+  <div class="modal-overlay" id="addRuleModal">
+    <div class="modal">
+      <h3 id="ruleModalTitle">新增规则</h3>
+      <div class="form-group">
+        <label>规则描述</label>
+        <input type="text" id="ruleLabel" placeholder="例如：主动道歉">
+      </div>
+      <div class="form-group">
+        <label>积分值</label>
+        <input type="number" id="ruleScore" placeholder="正数加分，负数减分">
+      </div>
+      <div class="form-group">
+        <label>类型</label>
+        <select id="ruleType">
+          <option value="add">加分项 ✨</option>
+          <option value="sub">减分项 ⚠️</option>
+          <option value="danger">严重违规 🚨（积分清零）</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAddRuleModal()">取消</button>
+        <button class="btn-confirm" id="ruleModalSaveBtn" onclick="saveRule()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Dialog -->
+  <div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-dialog">
+      <div class="confirm-icon" id="confirmIcon">✨</div>
+      <div class="confirm-text" id="confirmText"></div>
+      <div class="confirm-detail" id="confirmDetail"></div>
+      <div class="confirm-actions">
+        <button class="btn-cancel" onclick="closeConfirm()">取消</button>
+        <button class="btn-confirm" id="confirmBtn" onclick="executeConfirm()">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast">
+    <div class="toast-icon" id="toastIcon">✅</div>
+    <div class="toast-text" id="toastText"></div>
+    <div class="toast-detail" id="toastDetail"></div>
+  </div>
+
+  <script>
+    // ==================== Supabase Config ====================
+    let db = null;
+    let realtimeChannel = null;
+
+    const SUPABASE_CONFIG_KEY = 'meritBook_supabase_config';
+
+    function getConfig() {
+      const saved = localStorage.getItem(SUPABASE_CONFIG_KEY);
+      if (saved) return JSON.parse(saved);
+      return null;
+    }
+
+    function initSupabase(url, key) {
+      db = window.supabase.createClient(url, key);
+    }
+
+    // ==================== Setup ====================
+    async function saveConfig() {
+      const url = document.getElementById('setupUrl').value.trim();
+      const key = document.getElementById('setupKey').value.trim();
+      const errorEl = document.getElementById('setupError');
+
+      if (!url || !key) {
+        errorEl.textContent = '请填写完整的 URL 和 Key';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      const btn = document.getElementById('setupBtn');
+      btn.disabled = true;
+      btn.textContent = '连接中...';
+      errorEl.style.display = 'none';
+
+      try {
+        // Test connection
+        initSupabase(url, key);
+        const { data, error } = await db.from('rules').select('id').limit(1);
+
+        if (error) {
+          throw new Error(error.message || '连接失败，请检查配置');
+        }
+
+        // Save config
+        localStorage.setItem(SUPABASE_CONFIG_KEY, JSON.stringify({ url, key }));
+
+        // Check if rules exist, if not insert defaults
+        const { data: existingRules } = await db.from('rules').select('id');
+        if (!existingRules || existingRules.length === 0) {
+          await insertDefaultRules();
+        }
+
+        // Show main app
+        document.getElementById('setupPage').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        await loadAndRender();
+        setupRealtime();
+        updateConnStatus(true);
+
+      } catch (e) {
+        errorEl.textContent = '连接失败：' + e.message;
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = '连接并开始使用';
+      }
+    }
+
+    function resetConfig() {
+      if (confirm('确定要重置连接配置吗？将返回配置页面。')) {
+        localStorage.removeItem(SUPABASE_CONFIG_KEY);
+        if (realtimeChannel) {
+          db.removeChannel(realtimeChannel);
+        }
+        location.reload();
+      }
+    }
+
+    // ==================== Default Rules ====================
+    const DEFAULT_RULES = [
+      { rule_id: 'r1', label: '每一次真诚的夸奖、肯定、理解', score: 1, type: 'add', sort_order: 1 },
+      { rule_id: 'r2', label: '分别前的主动亲吻、拥抱', score: 1, type: 'add', sort_order: 2 },
+      { rule_id: 'r3', label: '记功', score: 5, type: 'add', sort_order: 3 },
+      { rule_id: 'r4', label: '有矛盾时，好好表达（即使是对方的错）', score: 5, type: 'add', sort_order: 4 },
+      { rule_id: 'r5', label: '有矛盾时，主动找我探讨/问AI', score: 5, type: 'add', sort_order: 5 },
+      { rule_id: 'r6', label: '不报备揭锅', score: -2, type: 'sub', sort_order: 6 },
+      { rule_id: 'r7', label: '约定了但是迟到5mins', score: -2, type: 'sub', sort_order: 7 },
+      { rule_id: 'r8', label: '有矛盾时，不好好表达（即使是对方的错）', score: -5, type: 'sub', sort_order: 8 },
+      { rule_id: 'r9', label: '不尊重对方想法、强制执行自己的想法', score: -30, type: 'sub', sort_order: 9 },
+      { rule_id: 'r10', label: '粗暴动手、抢东西', score: 0, type: 'danger', sort_order: 10 },
+    ];
+
+    async function insertDefaultRules() {
+      const { error } = await db.from('rules').insert(DEFAULT_RULES);
+      if (error) console.error('Insert default rules error:', error);
+    }
+
+    // ==================== State ====================
+    let state = {
+      currentPerson: 'leida',
+      rules: [],
+      records: [],
+      editingRules: false,
+      recordFilter: 'all'
+    };
+
+    // ==================== Data Loading ====================
+    async function loadRules() {
+      const { data, error } = await db
+        .from('rules')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        console.error('Load rules error:', error);
+        return;
+      }
+      state.rules = data || [];
+    }
+
+    async function loadRecords() {
+      const { data, error } = await db
+        .from('records')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        console.error('Load records error:', error);
+        return;
+      }
+      state.records = data || [];
+    }
+
+    async function loadAndRender() {
+      await Promise.all([loadRules(), loadRecords()]);
+      render();
+    }
+
+    // ==================== Realtime ====================
+    function setupRealtime() {
+      realtimeChannel = db
+        .channel('merit-book-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'rules' }, (payload) => {
+          console.log('Rules change:', payload);
+          loadRules().then(render);
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'records' }, (payload) => {
+          console.log('Records change:', payload);
+          loadRecords().then(render);
+        })
+        .subscribe((status) => {
+          console.log('Realtime status:', status);
+          updateConnStatus(status === 'SUBSCRIBED');
+        });
+    }
+
+    function updateConnStatus(online) {
+      const dot = document.getElementById('connDot');
+      const text = document.getElementById('connText');
+      if (online) {
+        dot.classList.add('online');
+        text.textContent = '已同步';
+      } else {
+        dot.classList.remove('online');
+        text.textContent = '离线';
+      }
+    }
+
+    // ==================== Score Calculation ====================
+    function getScore(person) {
+      let total = 0;
+      let lastClearIdx = -1;
+      for (let i = state.records.length - 1; i >= 0; i--) {
+        if (state.records[i].person === person && state.records[i].type === 'danger') {
+          lastClearIdx = i;
+          break;
+        }
+      }
+      for (let i = lastClearIdx + 1; i < state.records.length; i++) {
+        if (state.records[i].person === person && state.records[i].type !== 'danger') {
+          total += state.records[i].score;
+        }
+      }
+      return total;
+    }
+
+    // ==================== Rendering ====================
+    function render() {
+      renderScores();
+      renderRules();
+      renderRecords();
+    }
+
+    function renderScores() {
+      document.getElementById('score-leida').textContent = getScore('leida');
+      document.getElementById('score-liangjun').textContent = getScore('liangjun');
+    }
+
+    function renderRules() {
+      const addGrid = document.getElementById('addRulesGrid');
+      const subGrid = document.getElementById('subRulesGrid');
+      const dangerGrid = document.getElementById('dangerRulesGrid');
+
+      const addRules = state.rules.filter(r => r.type === 'add');
+      const subRules = state.rules.filter(r => r.type === 'sub');
+      const dangerRules = state.rules.filter(r => r.type === 'danger');
+
+      addGrid.innerHTML = addRules.map(r => ruleButtonHTML(r)).join('');
+      subGrid.innerHTML = subRules.map(r => ruleButtonHTML(r)).join('');
+      dangerGrid.innerHTML = dangerRules.map(r => ruleButtonHTML(r)).join('');
+
+      const sections = document.querySelectorAll('.section');
+      sections.forEach(s => {
+        s.classList.toggle('editing-rules', state.editingRules);
+      });
+    }
+
+    function ruleButtonHTML(rule) {
+      const cls = rule.type;
+      const ruleId = rule.rule_id || rule.id;
+      const scoreText = rule.type === 'danger' ? '清零' : (rule.score > 0 ? `+${rule.score}` : rule.score);
+      return `
+        <button class="rule-btn ${cls}" onclick="handleRuleClick('${ruleId}')">
+          ${rule.label} <span class="score-badge">${scoreText}</span>
+          <span class="delete-mark" onclick="event.stopPropagation(); deleteRule('${ruleId}')">✕</span>
+          <span class="edit-mark" onclick="event.stopPropagation(); openEditRuleModal('${ruleId}')">✎</span>
+        </button>
+      `;
+    }
+
+    function renderRecords() {
+      const list = document.getElementById('recordsList');
+      let records = [...state.records].reverse();
+
+      if (state.recordFilter !== 'all') {
+        records = records.filter(r => r.person === state.recordFilter);
+      }
+
+      if (records.length === 0) {
+        list.innerHTML = '<div class="empty-state">暂无记录，点击上方按钮开始记录吧 ✨</div>';
+        return;
+      }
+
+      const shown = records.slice(0, 50);
+      list.innerHTML = shown.map(r => {
+        const personCls = r.person === 'leida' ? 'leida' : 'liangjun';
+        const personName = r.person === 'leida' ? '雷' : '良';
+        const scoreClass = r.type === 'danger' ? 'clear' : (r.score > 0 ? 'positive' : 'negative');
+        const scoreText = r.type === 'danger' ? '清零' : (r.score > 0 ? `+${r.score}` : r.score);
+        const time = formatTime(r.created_at);
+        return `
+          <div class="record-item">
+            <div class="person-avatar ${personCls}">${personName}</div>
+            <div class="record-content">
+              <div class="record-label">${r.label}</div>
+              <div class="record-time">${time}</div>
+            </div>
+            <div class="record-score ${scoreClass}">${scoreText}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function formatTime(ts) {
+      const d = new Date(ts);
+      const now = new Date();
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const hour = d.getHours().toString().padStart(2, '0');
+      const min = d.getMinutes().toString().padStart(2, '0');
+
+      if (d.toDateString() === now.toDateString()) {
+        return `今天 ${hour}:${min}`;
+      }
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      if (d.toDateString() === yesterday.toDateString()) {
+        return `昨天 ${hour}:${min}`;
+      }
+      return `${month}/${day} ${hour}:${min}`;
+    }
+
+    // ==================== Actions ====================
+    function selectPerson(person) {
+      state.currentPerson = person;
+      document.querySelectorAll('.score-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.person === person);
+      });
+      const name = person === 'leida' ? '雷大' : '良君';
+      document.getElementById('targetBadge').innerHTML = `🎯 当前记录给：<strong>${name}</strong>`;
+    }
+
+    let pendingAction = null;
+
+    function handleRuleClick(ruleId) {
+      if (state.editingRules) return;
+
+      const rule = state.rules.find(r => (r.rule_id || r.id) === ruleId);
+      if (!rule) return;
+
+      const personName = state.currentPerson === 'leida' ? '雷大' : '良君';
+      const scoreText = rule.type === 'danger' ? '积分清零' : (rule.score > 0 ? `+${rule.score}` : rule.score);
+
+      pendingAction = { rule, person: state.currentPerson };
+
+      const icon = rule.type === 'danger' ? '🚨' : (rule.type === 'add' ? '✨' : '⚠️');
+      document.getElementById('confirmIcon').textContent = icon;
+      document.getElementById('confirmText').textContent = `给${personName}记录`;
+      document.getElementById('confirmDetail').textContent = `${rule.label}（${scoreText}）`;
+
+      if (rule.type === 'danger') {
+        document.getElementById('confirmBtn').style.background = '#ef4444';
+      } else {
+        document.getElementById('confirmBtn').style.background = '';
+      }
+
+      document.getElementById('confirmOverlay').classList.add('active');
+    }
+
+    function closeConfirm() {
+      document.getElementById('confirmOverlay').classList.remove('active');
+      pendingAction = null;
+    }
+
+    async function executeConfirm() {
+      if (!pendingAction) return;
+
+      const { rule, person } = pendingAction;
+      const record = {
+        person: person,
+        rule_id: rule.rule_id || rule.id,
+        label: rule.label,
+        score: rule.score,
+        type: rule.type
+      };
+
+      closeConfirm();
+
+      // Insert to Supabase
+      const { error } = await db.from('records').insert(record);
+
+      if (error) {
+        showToast('❌', '记录失败', error.message);
+        return;
+      }
+
+      // Reload and render (realtime will also trigger, but this is faster for local)
+      await loadRecords();
+      render();
+
+      const personName = person === 'leida' ? '雷大' : '良君';
+      const scoreText = rule.type === 'danger' ? '积分清零！' : (rule.score > 0 ? `+${rule.score}` : rule.score);
+      showToast(
+        rule.type === 'danger' ? '💥' : (rule.score > 0 ? '🎉' : '😅'),
+        `${personName} ${scoreText}`,
+        rule.label
+      );
+    }
+
+    function showToast(icon, text, detail) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastIcon').textContent = icon;
+      document.getElementById('toastText').textContent = text;
+      document.getElementById('toastDetail').textContent = detail;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    // ==================== Rule Management ====================
+    let editingRuleId = null; // null = 新增模式, 有值 = 编辑模式
+
+    function openAddRuleModal(type) {
+      editingRuleId = null;
+      document.getElementById('ruleModalTitle').textContent = '新增规则';
+      document.getElementById('ruleModalSaveBtn').textContent = '保存';
+      document.getElementById('ruleType').value = type || 'add';
+      document.getElementById('ruleLabel').value = '';
+      document.getElementById('ruleScore').value = type === 'add' ? '1' : (type === 'sub' ? '-2' : '');
+      if (type === 'danger') {
+        document.getElementById('ruleScore').value = '0';
+        document.getElementById('ruleScore').disabled = true;
+      } else {
+        document.getElementById('ruleScore').disabled = false;
+      }
+      document.getElementById('addRuleModal').classList.add('active');
+      setTimeout(() => document.getElementById('ruleLabel').focus(), 100);
+    }
+
+    function openEditRuleModal(ruleId) {
+      const rule = state.rules.find(r => (r.rule_id || r.id) === ruleId);
+      if (!rule) return;
+
+      editingRuleId = ruleId;
+      document.getElementById('ruleModalTitle').textContent = '编辑规则';
+      document.getElementById('ruleModalSaveBtn').textContent = '更新';
+      document.getElementById('ruleType').value = rule.type;
+      document.getElementById('ruleLabel').value = rule.label;
+      document.getElementById('ruleScore').value = rule.score;
+      if (rule.type === 'danger') {
+        document.getElementById('ruleScore').disabled = true;
+      } else {
+        document.getElementById('ruleScore').disabled = false;
+      }
+      document.getElementById('addRuleModal').classList.add('active');
+      setTimeout(() => document.getElementById('ruleLabel').focus(), 100);
+    }
+
+    function closeAddRuleModal() {
+      document.getElementById('addRuleModal').classList.remove('active');
+      editingRuleId = null;
+    }
+
+    async function saveRule() {
+      const label = document.getElementById('ruleLabel').value.trim();
+      const score = parseInt(document.getElementById('ruleScore').value) || 0;
+      const type = document.getElementById('ruleType').value;
+
+      if (!label) {
+        document.getElementById('ruleLabel').style.borderColor = '#ef4444';
+        return;
+      }
+
+      if (editingRuleId) {
+        // 编辑模式 - 更新已有规则
+        const updates = {
+          label: label,
+          score: type === 'danger' ? 0 : score,
+          type: type
+        };
+
+        const { error } = await db.from('rules').update(updates).eq('rule_id', editingRuleId);
+
+        if (error) {
+          showToast('❌', '更新失败', error.message);
+          return;
+        }
+
+        closeAddRuleModal();
+        await loadRules();
+        render();
+        showToast('✅', '规则已更新', label);
+      } else {
+        // 新增模式
+        const rule = {
+          rule_id: 'r' + Date.now().toString(36),
+          label: label,
+          score: type === 'danger' ? 0 : score,
+          type: type,
+          sort_order: state.rules.length + 1
+        };
+
+        const { error } = await db.from('rules').insert(rule);
+
+        if (error) {
+          showToast('❌', '添加失败', error.message);
+          return;
+        }
+
+        closeAddRuleModal();
+        await loadRules();
+        render();
+        showToast('✅', '规则已添加', label);
+      }
+    }
+
+    async function deleteRule(ruleId) {
+      if (!confirm('确定删除该规则？')) return;
+
+      const { error } = await db
+        .from('rules')
+        .delete()
+        .eq('rule_id', ruleId);
+
+      if (error) {
+        showToast('❌', '删除失败', error.message);
+        return;
+      }
+
+      await loadRules();
+      render();
+      showToast('🗑️', '规则已删除', '');
+    }
+
+    // Toggle edit mode
+    document.getElementById('editRulesBtn').addEventListener('click', () => {
+      state.editingRules = !state.editingRules;
+      document.getElementById('editRulesBtn').textContent = state.editingRules ? '✓' : '✏️';
+      render();
+    });
+
+    // ==================== Filter ====================
+    function filterRecords(filter) {
+      state.recordFilter = filter;
+      document.querySelectorAll('.tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.filter === filter);
+      });
+      renderRecords();
+    }
+
+    // ==================== Theme ====================
+    function initTheme() {
+      const saved = localStorage.getItem('meritBookTheme');
+      if (saved) {
+        document.documentElement.setAttribute('data-theme', saved);
+      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    }
+
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('meritBookTheme', next);
+    });
+
+    // ==================== Type Change in Modal ====================
+    document.getElementById('ruleType').addEventListener('change', (e) => {
+      const scoreInput = document.getElementById('ruleScore');
+      if (e.target.value === 'danger') {
+        scoreInput.value = '0';
+        scoreInput.disabled = true;
+      } else {
+        scoreInput.disabled = false;
+        if (e.target.value === 'add' && (!scoreInput.value || parseInt(scoreInput.value) <= 0)) {
+          scoreInput.value = '1';
+        } else if (e.target.value === 'sub' && (!scoreInput.value || parseInt(scoreInput.value) >= 0)) {
+          scoreInput.value = '-2';
+        }
+      }
+    });
+
+    // ==================== Init ====================
+    async function init() {
+      initTheme();
+      const config = getConfig();
+
+      if (!config) {
+        // Show setup page
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('setupPage').classList.remove('hidden');
+        return;
+      }
+
+      // Try to connect with timeout
+      try {
+        initSupabase(config.url, config.key);
+
+        // Test connection with 8s timeout
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('连接超时')), 8000));
+        const query = db.from('rules').select('id').limit(1);
+        const { data, error } = await Promise.race([query, timeout]);
+        if (error) throw error;
+
+        // Connected, show app
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        await loadAndRender();
+        setupRealtime();
+        updateConnStatus(true);
+
+      } catch (e) {
+        console.error('Connection failed:', e);
+        // Clear bad config and show setup
+        localStorage.removeItem(SUPABASE_CONFIG_KEY);
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        document.getElementById('setupPage').classList.remove('hidden');
+        document.getElementById('setupError').textContent = '上次连接失败：' + e.message + '，请重新配置';
+        document.getElementById('setupError').style.display = 'block';
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
