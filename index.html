@@ -551,6 +551,19 @@
       color: var(--text-secondary);
     }
 
+    .record-item .record-note {
+      font-size: 12px;
+      color: var(--primary);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .record-item {
+      cursor: pointer;
+    }
+
     .record-item .record-score {
       font-size: 16px;
       font-weight: 700;
@@ -994,9 +1007,26 @@
       <div class="confirm-icon" id="confirmIcon">✨</div>
       <div class="confirm-text" id="confirmText"></div>
       <div class="confirm-detail" id="confirmDetail"></div>
+      <div class="form-group" style="margin: 12px 0 0; text-align: left;">
+        <input type="text" id="confirmNote" placeholder="备注（选填）：记录当时情况" style="width:100%;font-size:14px;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-sm);background:var(--bg-secondary);color:var(--text-primary);">
+      </div>
       <div class="confirm-actions">
         <button class="btn-cancel" onclick="closeConfirm()">取消</button>
         <button class="btn-confirm" id="confirmBtn" onclick="executeConfirm()">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Note Modal -->
+  <div class="modal-overlay" id="editNoteModal">
+    <div class="modal">
+      <h3>编辑备注</h3>
+      <div class="form-group">
+        <textarea id="editNoteText" rows="3" placeholder="记录当时的情况..." style="width:100%;font-size:14px;padding:10px 12px;border:1px solid var(--border-color);border-radius:var(--radius-sm);background:var(--bg-secondary);color:var(--text-primary);resize:vertical;"></textarea>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeEditNoteModal()">取消</button>
+        <button class="btn-confirm" onclick="saveEditNote()">保存</button>
       </div>
     </div>
   </div>
@@ -1257,11 +1287,13 @@
         const scoreClass = r.type === 'danger' ? 'clear' : (r.score > 0 ? 'positive' : 'negative');
         const scoreText = r.type === 'danger' ? '清零' : (r.score > 0 ? `+${r.score}` : r.score);
         const time = formatTime(r.created_at);
+        const noteHtml = r.note ? `<div class="record-note">📝 ${r.note}</div>` : '';
         return `
-          <div class="record-item">
+          <div class="record-item" onclick="openEditNoteModal(${r.id})">
             <div class="person-avatar ${personCls}">${personName}</div>
             <div class="record-content">
               <div class="record-label">${r.label}</div>
+              ${noteHtml}
               <div class="record-time">${time}</div>
             </div>
             <div class="record-score ${scoreClass}">${scoreText}</div>
@@ -1328,6 +1360,7 @@
 
     function closeConfirm() {
       document.getElementById('confirmOverlay').classList.remove('active');
+      document.getElementById('confirmNote').value = '';
       pendingAction = null;
     }
 
@@ -1335,12 +1368,14 @@
       if (!pendingAction) return;
 
       const { rule, person } = pendingAction;
+      const note = document.getElementById('confirmNote').value.trim();
       const record = {
         person: person,
         rule_id: rule.rule_id || rule.id,
         label: rule.label,
         score: rule.score,
-        type: rule.type
+        type: rule.type,
+        note: note || null
       };
 
       closeConfirm();
@@ -1504,6 +1539,40 @@
         t.classList.toggle('active', t.dataset.filter === filter);
       });
       renderRecords();
+    }
+
+    // ==================== Edit Note ====================
+    let editingNoteRecordId = null;
+
+    function openEditNoteModal(recordId) {
+      const record = state.records.find(r => r.id === recordId);
+      if (!record) return;
+      editingNoteRecordId = recordId;
+      document.getElementById('editNoteText').value = record.note || '';
+      document.getElementById('editNoteModal').classList.add('active');
+      setTimeout(() => document.getElementById('editNoteText').focus(), 100);
+    }
+
+    function closeEditNoteModal() {
+      document.getElementById('editNoteModal').classList.remove('active');
+      editingNoteRecordId = null;
+    }
+
+    async function saveEditNote() {
+      if (!editingNoteRecordId) return;
+      const note = document.getElementById('editNoteText').value.trim();
+
+      const { error } = await db.from('records').update({ note: note || null }).eq('id', editingNoteRecordId);
+
+      if (error) {
+        showToast('❌', '保存失败', error.message);
+        return;
+      }
+
+      closeEditNoteModal();
+      await loadRecords();
+      render();
+      showToast('📝', '备注已保存', '');
     }
 
     // ==================== Theme ====================

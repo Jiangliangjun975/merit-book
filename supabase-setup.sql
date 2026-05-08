@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS records (
   label TEXT NOT NULL,
   score INTEGER NOT NULL DEFAULT 0,
   type TEXT NOT NULL CHECK (type IN ('add', 'sub', 'danger')),
+  note TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
