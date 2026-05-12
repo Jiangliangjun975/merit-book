@@ -1296,13 +1296,21 @@
       });
     }
 
+    // HTML转义，防止XSS
+    function esc(s) {
+      if (!s) return '';
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+
     function ruleButtonHTML(rule) {
       const cls = rule.type;
       const ruleId = rule.rule_id || rule.id;
       const scoreText = rule.type === 'danger' ? '清零' : (rule.score > 0 ? `+${rule.score}` : rule.score);
       return `
         <button class="rule-btn ${cls}" onclick="handleRuleClick('${ruleId}')">
-          ${rule.label} <span class="score-badge">${scoreText}</span>
+          ${esc(rule.label)} <span class="score-badge">${scoreText}</span>
           <span class="delete-mark" onclick="event.stopPropagation(); deleteRule('${ruleId}')">✕</span>
           <span class="edit-mark" onclick="event.stopPropagation(); openEditRuleModal('${ruleId}')">✎</span>
         </button>
@@ -1329,14 +1337,14 @@
         const scoreClass = r.type === 'danger' ? 'clear' : (r.score > 0 ? 'positive' : 'negative');
         const scoreText = r.type === 'danger' ? '清零' : (r.score > 0 ? `+${r.score}` : r.score);
         const time = formatTime(r.created_at);
-        const noteHtml = r.note ? `<div class="record-note">📝 ${r.note}</div>` : '';
+        const noteHtml = r.note ? `<div class="record-note">📝 ${esc(r.note)}</div>` : '';
         return `
           <div class="record-wrapper" data-record-id="${r.id}">
             <div class="record-delete-bg" onclick="confirmDeleteRecord(${r.id})">🗑️ 删除</div>
             <div class="record-item" data-record-id="${r.id}">
               <div class="person-avatar ${personCls}">${personName}</div>
               <div class="record-content">
-                <div class="record-label">${r.label}</div>
+                <div class="record-label">${esc(r.label)}</div>
                 ${noteHtml}
                 <div class="record-time">${time}</div>
               </div>
